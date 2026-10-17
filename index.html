@@ -734,9 +734,23 @@ body.xmas #arena::before{content:"";position:absolute;inset:0;pointer-events:non
 .risknote{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);color:#fde68a}
 .afl.off{opacity:.45;text-decoration:line-through}
 .btn.risk{border-color:#f59e0b!important;color:#fde68a!important}
+
+/* écran large (PC en plein écran) : la scène garde ses proportions dans une colonne centrée, avec le même décor flouté de chaque côté */
+#bgfar{display:none}
+@media (min-width:640px){
+ :root{--gx:max(0px,calc((100vw - 560px) / 2))}
+ #bgfar{display:block;position:fixed;inset:-40px;z-index:0;background-size:cover;background-position:center bottom;background-repeat:no-repeat;filter:blur(22px) brightness(.6) saturate(1.2);pointer-events:none}
+ #arena{left:var(--gx);right:var(--gx);width:auto;background-size:cover!important;box-shadow:0 0 0 1px rgba(245,210,122,.25),0 0 60px rgba(0,0,0,.7)}
+ #elems{left:calc(var(--gx) + 8px)}
+ #giftbtn{right:calc(var(--gx) + 8px)}
+ #stab{right:var(--gx)}
+ #stpanel{right:calc(var(--gx) + 34px)}
+ #ver{right:calc(var(--gx) + 8px)}
+}
 </style>
 </head>
 <body>
+<div id="bgfar" aria-hidden="true"></div>
 <div id="amb" aria-hidden="true"></div>
 <div id="ver" hidden>VERSION 100 %</div>
 <div id="skills"></div>
@@ -1152,6 +1166,7 @@ function setZone(){
   if(z!==curZ){
     $("arena").style.backgroundImage='url("data:image/svg+xml;utf8,'+encodeURIComponent(tallScene(z))+'")';
     $("arena").style.backgroundColor=ZSKY[z];
+    $("bgfar").style.backgroundImage=$("arena").style.backgroundImage;$("bgfar").style.backgroundColor=ZSKY[z];
     buildAmb(z);
     if(curZ>=0)msg("Zone : "+ZN[z]+" · faible au "+ELN[weakOf(ZEL[z])]);
     curZ=z;
@@ -2866,8 +2881,9 @@ const loginPending=()=>loginState().last!==dayKey();
 let loginShown="";
 // ===== NOUVEAUTÉS : fenêtre affichée une fois à la première ouverture après une mise à jour =====
 // à chaque mise à jour : changer GAME_VER et la liste NEWS
-const GAME_VER="2026-10-17d";
+const GAME_VER="2026-10-17e";
 const NEWS={t:"Mise à jour du 17 octobre",items:[
+ ["🖥️","Plein écran sur PC","Le décor s'affiche maintenant correctement sur les grands écrans, avec le paysage flouté sur les côtés."],
  ["🔥","Améliorations jusqu'à +10","Au-delà de +5, chaque amélioration risque de briser la pièce (5 % pour +6, jusqu'à 25 % pour +10). Une pièce brisée se répare avec des gemmes… beaucoup de gemmes !"],
  ["⚔️","Nouveau nom","Le jeu s'appelle maintenant The Warrior !"],
  ["💰","Maîtrise","Dès l'étage 150, Épée, Armure, Vitesse et Butin continuent après le niveau 50, sans limite. L'or sert enfin toujours !"],
