@@ -1,3 +1,3 @@
 # The Warrior
 
-Idle RPG jouable dans le navigateur : https://wass1207.github.io/the-warrior/
+Idle RPG jouable dans le navigateur : https://wass1207.github.io/The-Warrior/
