@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>idle war fighter</title>
+<title>The Warrior</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&display=swap">
 <meta name="theme-color" content="#6a2590">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Le Guerrier">
+<meta name="apple-mobile-web-app-title" content="The Warrior">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%94%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <style>
 :root{--pa:rgba(255,255,255,.84);--bg:#efe9e1;--panel:#fff;--ink:#2a2420;--mute:#7b726a;--line:#dcd3c8;--gold:#c98a14;--red:#c0392b;--hero:#3a6ea5;--ok:#2f8f5b;--boss:#7a2fa0;
@@ -2835,8 +2835,9 @@ const loginPending=()=>loginState().last!==dayKey();
 let loginShown="";
 // ===== NOUVEAUTÉS : fenêtre affichée une fois à la première ouverture après une mise à jour =====
 // à chaque mise à jour : changer GAME_VER et la liste NEWS
-const GAME_VER="2026-10-17b";
+const GAME_VER="2026-10-17c";
 const NEWS={t:"Mise à jour du 17 octobre",items:[
+ ["⚔️","Nouveau nom","Le jeu s'appelle maintenant The Warrior !"],
  ["💰","Maîtrise","Dès l'étage 150, Épée, Armure, Vitesse et Butin continuent après le niveau 50, sans limite. L'or sert enfin toujours !"],
  ["🔨","Prix fixes","Le prix d'amélioration d'un équipement et les prix des événements ne changent plus une fois fixés."],
  ["📅","Onglet Quotidien","Événements, connexion du jour et quêtes réunis dans Progrès › Quotidien, avec un bandeau sur l'écran de jeu."],
@@ -3138,7 +3139,7 @@ $("sv_share").onclick=async()=>{
   const c=$("sv_code").value.trim()||makeCode();$("sv_code").value=c;
   try{
     if(window.AndroidBridge&&AndroidBridge.share){AndroidBridge.share(c);return}
-    await navigator.share({title:"Sauvegarde Le Guerrier",text:c});
+    await navigator.share({title:"Sauvegarde The Warrior",text:c});
   }catch(e){svMsg("Partage indisponible : utilise Copier.")}
 };
 $("sv_paste").onclick=async()=>{
