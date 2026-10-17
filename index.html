@@ -725,6 +725,15 @@ body.xmas #arena::before{content:"";position:absolute;inset:0;pointer-events:non
 .newsl i{font-style:normal;font-size:20px;line-height:1.2}
 .newsl b{display:block;font-size:14px;color:#fde68a}
 .newsl span{display:block;font-size:12.5px;line-height:1.35;opacity:.9}
+
+/* casse d'équipement */
+.bi.brk img{filter:grayscale(1) brightness(.6)}
+.bi.brk{border-color:#ef4444!important;box-shadow:inset 0 0 0 1px rgba(239,68,68,.5)}
+.brknote,.risknote{font-size:12px;line-height:1.35;padding:6px 8px;border-radius:8px;margin:6px 0}
+.brknote{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.5);color:#fecaca}
+.risknote{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);color:#fde68a}
+.afl.off{opacity:.45;text-decoration:line-through}
+.btn.risk{border-color:#f59e0b!important;color:#fde68a!important}
 </style>
 </head>
 <body>
@@ -2108,7 +2117,7 @@ const EVENTS=[
    {t:"Lui donner de l'or",cost:travCost,go:()=>{const v=travCost(),x=(1+0.5*S.stage)*25;S.gold-=v;addXp(x);return "Il te donne de précieux conseils : +"+fmt(x)+" XP."}},
    {t:"Passer",sec:1}]},
  {id:"smith",n:"Forgeron itinérant",d:"Un forgeron installe sa forge de fortune et propose ses services.",sp:"cross",ch:()=>{
-   const up=SLOTS.map(x=>S.eq.worn[x.k]).filter(p=>p&&p.lvl<5).sort((a,b)=>a.lvl-b.lvl)[0];
+   const up=SLOTS.map(x=>S.eq.worn[x.k]).filter(p=>p&&!p.broken&&p.lvl<5).sort((a,b)=>a.lvl-b.lvl)[0];
    return[
    {t:up?"Améliorer gratuitement : "+eqName(up):"Améliorer une pièce portée (aucune disponible)",dis:!up,go:()=>{up.lvl++;eqDirty();return eqName(up)+" passe au niveau +"+up.lvl+"."}},
    {t:"Acheter une pièce de qualité · 12 gemmes",dis:S.gems<12,go:()=>{S.gems-=12;const e=rollEquip([0,50,40,10],S.st.best);giveEquip(e);return "Tu obtiens : "+eqName(e)+" ("+EQR[e.rar].n+")."}},
@@ -2185,12 +2194,12 @@ function normEq(){
   S.eq={worn:w,bag:Array.isArray(e.bag)?e.bag:[],seq:+e.seq||1};
 }
 const eqVal=(p,k)=>{let v=0;for(const a of p.aff)if(a[0]===k)v+=a[1];return v*(1+0.1*p.lvl)};
-function setCounts(){const c={};SLOTS.forEach(x=>{const p=S.eq.worn[x.k];if(p)c[p.set]=(c[p.set]||0)+1});return c}
+function setCounts(){const c={};SLOTS.forEach(x=>{const p=S.eq.worn[x.k];if(p&&!p.broken)c[p.set]=(c[p.set]||0)+1});return c}
 let EQCo=null;
 function eqStat(k){
   if(!EQC||EQCo!==S.eq){
     EQC={};EQCo=S.eq;
-    SLOTS.forEach(x=>{const p=S.eq.worn[x.k];if(p)p.aff.forEach(a=>{EQC[a[0]]=(EQC[a[0]]||0)+a[1]*(1+0.1*p.lvl)})});
+    SLOTS.forEach(x=>{const p=S.eq.worn[x.k];if(p&&!p.broken)p.aff.forEach(a=>{EQC[a[0]]=(EQC[a[0]]||0)+a[1]*(1+0.1*p.lvl)})});
     const c=setCounts();
     SETS.forEach(st=>{const n=c[st.k]||0;if(n>=2)for(const q in st.b2)EQC[q]=(EQC[q]||0)+st.b2[q];if(n>=4)for(const q in st.b4)EQC[q]=(EQC[q]||0)+st.b4[q];if(n>=6)for(const q in st.b6)EQC[q]=(EQC[q]||0)+st.b6[q]});
     addExtra(EQC);
@@ -2289,9 +2298,28 @@ function sellPiece(p){
   const i=S.eq.bag.indexOf(p);if(i<0)return;
   const v=sellVal(p);S.eq.bag.splice(i,1);S.gold+=v;S.st.gold+=v;eqSel=null;msg(eqName(p)+" vendu : +"+fmt(v)+" or");
 }
+// améliorations : +1 à +5 sans risque, +6 à +10 avec un risque de briser la pièce (5 % pour +6, puis +5 % par palier jusqu'à 25 % pour +10)
+// une pièce brisée ne donne plus aucun bonus jusqu'à sa réparation, qui coûte (beaucoup) de gemmes
+const EQ_SAFE=5,EQ_MAX=10;
+const brkChance=p=>p.lvl<EQ_SAFE?0:0.05*(p.lvl-EQ_SAFE+1);
+const repairCost=p=>Math.round(30*(p.rar+1)*Math.pow(1.6,Math.max(0,p.lvl-EQ_SAFE)));
+const pctTxt=x=>Math.round(x*100)+" %";
 function upgradePiece(p){
-  if(p.lvl>=5)return;const c=upCost(p);if(S.gold<c)return;
-  S.gold-=c;p.lvl++;eqDirty();
+  if(p.broken||p.lvl>=EQ_MAX)return;const c=upCost(p);if(S.gold<c)return;
+  S.gold-=c;
+  if(Math.random()<brkChance(p)){p.broken=true;S.st.broken=(S.st.broken||0)+1;eqDirty();eqSig="";showBroken(p);return}
+  p.lvl++;eqDirty();if(p.lvl>EQ_SAFE)celebrate();
+}
+function repairPiece(p){
+  if(!p.broken)return;const g=repairCost(p);if(S.gems<g){msg("Il te faut "+g+" gemmes pour réparer cette pièce.");return}
+  S.gems-=g;p.broken=false;eqDirty();eqSig="";save();msg(eqName(p)+" réparée !");
+}
+function showBroken(p){
+  const g=repairCost(p);
+  openAway("💥 Équipement brisé !",eqName(p)+" a cédé en passant à +"+(p.lvl+1)+".",[["Effet","Plus aucun bonus tant qu'elle est brisée"],["Niveau gardé","+"+p.lvl],["Réparation",g+" gemmes (tu en as "+S.gems+")"]]);
+  $("awayb").insertAdjacentHTML("beforeend",'<button class="btn" id="brk_fix" style="margin-top:12px"'+(S.gems>=g?"":" disabled")+'>Réparer · '+g+' gemmes</button>');
+  $("brk_fix").onclick=()=>{repairPiece(p);closeAway();renderEq()};
+  $("awayok").textContent="Plus tard";$("awayok").classList.add("s");save();
 }
 function fusePiece(p){
   const others=S.eq.bag.filter(q=>q!==p&&q.slot===p.slot&&q.rar===p.rar);
@@ -2353,7 +2381,8 @@ function eqIco(slot,set){
 function eqTile(p,slot){
   const b=document.createElement("button");b.className="bi"+(p?"":" no");b.dataset.id=p?p.id:"";b.dataset.slot=slot;
   b.setAttribute("aria-label",p?eqName(p)+" "+EQR[p.rar].n:SLOTS.find(x=>x.k===slot).n+" vide");
-  b.innerHTML='<img alt="" src="'+eqIco(slot,p&&p.set)+'"><span class="bn">'+(p&&p.lvl?"+"+p.lvl:"")+'</span>';
+  if(p&&p.broken)b.classList.add("brk");
+  b.innerHTML='<img alt="" src="'+eqIco(slot,p&&p.set)+'"><span class="bn">'+(p&&p.broken?"💔":"")+(p&&p.lvl?"+"+p.lvl:"")+'</span>';
   if(p){b.style.borderColor=EQR[p.rar].c;b.style.boxShadow="inset 0 -5px 0 "+SETBY(p.set).c}
   if(p&&eqSel===p.id)b.classList.add("sel");
   return b;
@@ -2367,7 +2396,7 @@ function renderEq(){
   const bag=S.eq.bag.slice().sort(so==="slot"?(a,b)=>SI(a.slot)-SI(b.slot)||base(a,b):so==="set"?(a,b)=>TI(a.set)-TI(b.set)||SI(a.slot)-SI(b.slot)||base(a,b):base);
   document.querySelectorAll("#eqsort .chip").forEach(c=>{const on=c.dataset.s===so;c.classList.toggle("on",on);c.setAttribute("aria-pressed",on?"true":"false")});
   const aff=p=>p?[p.id,p.lvl,S.gold>=upCost(p)?1:0,S.eq.bag.filter(q=>q.slot===p.slot&&q.rar===p.rar).length]:0;
-  const sig=JSON.stringify([so,SLOTS.map(x=>(S.eq.worn[x.k]||{}).id||0),bag.map(p=>p.id+":"+p.lvl),eqSel,sel?aff(sel.p):0,S.eq.bag.length,sel?sel.p.lvl:0]);
+  const sig=JSON.stringify([so,SLOTS.map(x=>(S.eq.worn[x.k]||{}).id||0),bag.map(p=>p.id+":"+p.lvl+(p.broken?"b":"")),eqSel,sel?aff(sel.p):0,S.eq.bag.length,sel?sel.p.lvl:0,sel?!!sel.p.broken:0,sel&&sel.p.broken?S.gems>=repairCost(sel.p):0,SLOTS.map(x=>(S.eq.worn[x.k]||{}).broken?1:0).join("")]);
   if(sig===eqSig)return;
   eqSig=sig;
   const W=$("eqworn"),B=$("eqbag");W.innerHTML="";B.innerHTML="";
@@ -2387,10 +2416,12 @@ function renderEq(){
   const nSame=S.eq.bag.filter(q=>q.slot===p.slot&&q.rar===p.rar).length;
   D_.hidden=false;
   D_.innerHTML='<button class="dx" data-act="x" aria-label="Fermer la fiche" title="Fermer">×</button><div class="eh"><img alt="" src="'+eqIco(p.slot,p.set)+'"><div class="tx"><div><b>'+eqName(p)+'</b> <span style="color:'+R.c+';font-size:13px">'+R.n+(p.lvl?" +"+p.lvl:"")+'</span></div><div class="dd">Panoplie '+st.n+' · niveau d\'objet '+p.ilvl+'</div></div></div>'
-   +'<div class="afl">'+p.aff.map(a=>'<div>'+affTxt(a[0],eqVal(p,a[0]))+'</div>').join("")+'</div>'
+   +(p.broken?'<div class="brknote">💔 Pièce brisée : elle ne donne plus aucun bonus. Répare-la avec des gemmes.</div>':p.lvl>=EQ_SAFE&&p.lvl<EQ_MAX?'<div class="risknote">Au-delà de +'+EQ_SAFE+', chaque amélioration peut briser la pièce ('+pctTxt(brkChance(p))+' pour passer à +'+(p.lvl+1)+').</div>':'')
+   +'<div class="afl'+(p.broken?" off":"")+'">'+p.aff.map(a=>'<div>'+affTxt(a[0],eqVal(p,a[0]))+'</div>').join("")+'</div>'
    +'<div class="eb">'
    +(sel.worn?'<button class="btn" data-act="un">Retirer</button>':'<button class="btn" data-act="eq">Équiper</button>')
-   +(p.lvl<5?'<button class="btn s" data-act="up"'+(S.gold>=upCost(p)?"":" disabled")+'>Améliorer '+fmt(upCost(p))+'</button>':'<button class="btn s" disabled>Niveau max</button>')
+   +(p.broken?'<button class="btn" data-act="rp"'+(S.gems>=repairCost(p)?"":" disabled")+'>Réparer · '+repairCost(p)+' gemmes</button>'
+     :p.lvl<EQ_MAX?'<button class="btn s'+(p.lvl>=EQ_SAFE?" risk":"")+'" data-act="up"'+(S.gold>=upCost(p)?"":" disabled")+'>Améliorer '+fmt(upCost(p))+(p.lvl>=EQ_SAFE?' · ⚠ '+pctTxt(brkChance(p))+' de casse':'')+'</button>':'<button class="btn s" disabled>Niveau max (+'+EQ_MAX+')</button>')
    +(!sel.worn&&p.rar<3?'<button class="btn s" data-act="fu"'+(nSame>=3?"":" disabled")+'>Fusion '+Math.min(nSame,3)+'/3</button>':'')
    +(!sel.worn?'<button class="btn s" data-act="sl">Vendre '+fmt(sellVal(p))+'</button>':'')
    +'</div>';
@@ -2404,7 +2435,7 @@ function eqClick(e){
   const act=t.dataset.act;if(!act||!eqSel)return;
   if(act==="x"){eqSel=null;eqSig="";renderEq();$("pbody").classList.remove("hasbig");return}
   const f=findEq(eqSel);if(!f)return;
-  if(act==="eq")equipPiece(f.p);else if(act==="un")unequipPiece(f.p);else if(act==="up")upgradePiece(f.p);
+  if(act==="eq")equipPiece(f.p);else if(act==="un")unequipPiece(f.p);else if(act==="up")upgradePiece(f.p);else if(act==="rp")repairPiece(f.p);
   else if(act==="fu")fusePiece(f.p);else if(act==="sl")sellPiece(f.p);
   eqSig="";renderEq();$("pbody").classList.toggle("hasbig",!!eqSel);
 }
@@ -2835,8 +2866,9 @@ const loginPending=()=>loginState().last!==dayKey();
 let loginShown="";
 // ===== NOUVEAUTÉS : fenêtre affichée une fois à la première ouverture après une mise à jour =====
 // à chaque mise à jour : changer GAME_VER et la liste NEWS
-const GAME_VER="2026-10-17c";
+const GAME_VER="2026-10-17d";
 const NEWS={t:"Mise à jour du 17 octobre",items:[
+ ["🔥","Améliorations jusqu'à +10","Au-delà de +5, chaque amélioration risque de briser la pièce (5 % pour +6, jusqu'à 25 % pour +10). Une pièce brisée se répare avec des gemmes… beaucoup de gemmes !"],
  ["⚔️","Nouveau nom","Le jeu s'appelle maintenant The Warrior !"],
  ["💰","Maîtrise","Dès l'étage 150, Épée, Armure, Vitesse et Butin continuent après le niveau 50, sans limite. L'or sert enfin toujours !"],
  ["🔨","Prix fixes","Le prix d'amélioration d'un équipement et les prix des événements ne changent plus une fois fixés."],
